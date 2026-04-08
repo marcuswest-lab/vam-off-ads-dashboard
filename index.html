@@ -438,7 +438,7 @@ function renderPivotMetricCells(data){
 
 function passesFilters(data){
   if(filterWinners){
-    if(!((data.roas!=null&&data.roas>=1.8)||(data.costConnected!=null&&data.costConnected<=300))) return false;
+    if(!(data.roas!=null&&data.roas>=1.8)) return false;
   }
   if(filterSpend){
     if(!(data.cost!=null&&data.cost>=1500)) return false;
@@ -564,7 +564,7 @@ function renderTable(){
     rows=rows.filter(r=>r.campaign&&r.campaign.includes(filterCampaign));
   }
   if(filterWinners){
-    rows=rows.filter(r=>(r.roas!=null&&r.roas>=1.8)||(r.costConnected!=null&&r.costConnected<=300));
+    rows=rows.filter(r=>r.roas!=null&&r.roas>=1.8);
   }
   if(filterSpend){
     rows=rows.filter(r=>r.cost!=null&&r.cost>=1500);
