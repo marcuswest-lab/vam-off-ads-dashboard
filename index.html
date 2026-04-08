@@ -34,8 +34,10 @@ h1{font-size:28px;font-weight:700;color:#F8FAFC;text-align:center;margin-bottom:
 .tab.active{background:#3B82F6;color:#fff;border-radius:9px}
 .tab .cnt{opacity:.6;font-size:11px;margin-left:4px}
 .table-wrap{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 280px);border-radius:10px;border:1px solid #1E293B;background:#151922}
-table{width:100%;border-collapse:collapse;font-size:12px}
-thead th{background:#151922;color:#94A3B8;font-weight:600;padding:10px 12px;text-align:right;white-space:nowrap;border-bottom:1px solid #1E293B;position:sticky;top:0;z-index:10;cursor:pointer;user-select:none;font-size:11px;letter-spacing:.3px;text-transform:uppercase}
+table{width:max-content;min-width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+thead th{background:#151922;color:#94A3B8;font-weight:600;padding:10px 12px;text-align:right;white-space:nowrap;border-bottom:1px solid #1E293B;position:sticky;top:0;z-index:10;cursor:pointer;user-select:none;font-size:11px;letter-spacing:.3px;text-transform:uppercase;position:relative;overflow:hidden}
+.resize-handle{position:absolute;right:0;top:0;width:5px;height:100%;cursor:col-resize;background:transparent;z-index:20}
+.resize-handle:hover,.resize-handle.active{background:#3B82F6;opacity:0.6}
 thead th:hover{color:#CBD5E1}
 thead th.col-idx,thead th.col-name,thead th.col-campaign,thead th.col-adset{text-align:left}
 thead th.col-idx{left:0;z-index:15;min-width:36px;width:36px}
@@ -48,9 +50,9 @@ thead th .sort-arrow{font-size:10px;margin-left:3px;opacity:.3}
 thead th .sort-arrow.active-asc,thead th .sort-arrow.active-desc{opacity:1;color:#3B82F6}
 tbody td{padding:8px 12px;border-bottom:1px solid #1E293B;text-align:right;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#CBD5E1;white-space:nowrap}
 tbody td.col-idx{text-align:center;color:#475569;font-size:11px;position:sticky;left:0;z-index:5;background:#151922;min-width:36px;width:36px}
-tbody td.col-name{text-align:left;font-family:'DM Sans',sans-serif;font-weight:500;color:#F8FAFC;position:sticky;left:36px;z-index:5;background:#151922;min-width:340px;max-width:420px;overflow:hidden;text-overflow:ellipsis}
-tbody td.col-campaign{text-align:left;font-family:'DM Sans',sans-serif;font-weight:400;color:#CBD5E1;min-width:200px;max-width:280px;overflow:hidden;text-overflow:ellipsis}
-tbody td.col-adset{text-align:left;font-family:'DM Sans',sans-serif;font-weight:400;color:#CBD5E1;min-width:180px;max-width:260px;overflow:hidden;text-overflow:ellipsis}
+tbody td.col-name{text-align:left;font-family:'DM Sans',sans-serif;font-weight:500;color:#F8FAFC;position:sticky;left:36px;z-index:5;background:#151922;min-width:340px;overflow:hidden;text-overflow:ellipsis}
+tbody td.col-campaign{text-align:left;font-family:'DM Sans',sans-serif;font-weight:400;color:#CBD5E1;min-width:200px;overflow:hidden;text-overflow:ellipsis}
+tbody td.col-adset{text-align:left;font-family:'DM Sans',sans-serif;font-weight:400;color:#CBD5E1;min-width:180px;overflow:hidden;text-overflow:ellipsis}
 tbody td.col-ad{text-align:center}
 tbody td.col-brief{text-align:center}
 tbody td.col-variations{text-align:center;font-family:'JetBrains Mono',monospace;color:#94A3B8}
@@ -83,9 +85,9 @@ tbody tr:hover td.col-idx,tbody tr:hover td.col-name{background:#1a1f2e}
 thead th.col-campaign-pv{text-align:left;min-width:240px}
 thead th.col-adset-pv{text-align:left;min-width:200px}
 thead th.col-adname-pv{text-align:left;min-width:260px}
-tbody td.col-campaign-pv{text-align:left;font-family:'DM Sans',sans-serif;min-width:240px;max-width:320px;overflow:hidden;text-overflow:ellipsis}
-tbody td.col-adset-pv{text-align:left;font-family:'DM Sans',sans-serif;min-width:200px;max-width:280px;overflow:hidden;text-overflow:ellipsis}
-tbody td.col-adname-pv{text-align:left;font-family:'DM Sans',sans-serif;min-width:260px;max-width:360px;overflow:hidden;text-overflow:ellipsis}
+tbody td.col-campaign-pv{text-align:left;font-family:'DM Sans',sans-serif;min-width:240px;overflow:hidden;text-overflow:ellipsis}
+tbody td.col-adset-pv{text-align:left;font-family:'DM Sans',sans-serif;min-width:200px;overflow:hidden;text-overflow:ellipsis}
+tbody td.col-adname-pv{text-align:left;font-family:'DM Sans',sans-serif;min-width:260px;overflow:hidden;text-overflow:ellipsis}
 .hidden-row{display:none}
 </style>
 </head>
@@ -654,6 +656,55 @@ buildTabBar();
 updateLegend();
 buildCampaignFilter();
 renderPivotTable();
+
+/* Column resize */
+(function(){
+  let startX,startW,th,colIdx;
+  function initResize(){
+    document.querySelectorAll('thead th').forEach((h,i)=>{
+      if(h.querySelector('.resize-handle')) return;
+      const handle=document.createElement('div');
+      handle.className='resize-handle';
+      handle.addEventListener('mousedown',function(e){
+        e.stopPropagation();
+        e.preventDefault();
+        th=h; colIdx=i; startX=e.pageX; startW=th.offsetWidth;
+        handle.classList.add('active');
+        document.addEventListener('mousemove',onDrag);
+        document.addEventListener('mouseup',stopDrag);
+        document.body.style.cursor='col-resize';
+        document.body.style.userSelect='none';
+      });
+      h.appendChild(handle);
+    });
+  }
+  function onDrag(e){
+    if(!th) return;
+    const diff=e.pageX-startX;
+    const newW=Math.max(60,startW+diff);
+    th.style.width=newW+'px';
+    th.style.minWidth=newW+'px';
+    th.style.maxWidth=newW+'px';
+    const rows=document.querySelectorAll('tbody tr');
+    rows.forEach(r=>{
+      const td=r.children[colIdx];
+      if(td){td.style.width=newW+'px';td.style.minWidth=newW+'px';td.style.maxWidth=newW+'px';}
+    });
+  }
+  function stopDrag(){
+    if(th){
+      th.querySelector('.resize-handle').classList.remove('active');
+    }
+    th=null;
+    document.removeEventListener('mousemove',onDrag);
+    document.removeEventListener('mouseup',stopDrag);
+    document.body.style.cursor='';
+    document.body.style.userSelect='';
+  }
+  const obs=new MutationObserver(()=>setTimeout(initResize,50));
+  obs.observe(document.getElementById('dataTable'),{childList:true,subtree:true});
+  initResize();
+})();
 </script>
 </body>
 </html>
