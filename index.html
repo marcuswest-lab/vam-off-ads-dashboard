@@ -452,9 +452,9 @@ function recomputeTotals(adsList){
   const hasInboundConnected=adsList.some(a=>a.inboundConnected!=null);
   const hasOutboundConnected=adsList.some(a=>a.outboundConnected!=null);
   const hasConnected=adsList.some(a=>a.connected!=null);
-  // Find budget from first ad that has one
-  let budget=null;
-  for(const a of adsList){ if(a.budget!=null){ budget=a.budget; break; } }
+  // Find budget and budgetType from first ad that has one
+  let budget=null; let budgetType=null;
+  for(const a of adsList){ if(a.budget!=null){ budget=a.budget; budgetType=a.budgetType; break; } }
   return {
     cost:Math.round(cost*100)/100,
     leads:leads,
@@ -481,14 +481,26 @@ function recomputeTotals(adsList){
     ctrAll:impressions>0?Math.round(adsList.reduce((s,a)=>(s+(a.impressions>0&&a.ctrAll!=null?a.ctrAll*a.impressions/100:0)),0)/impressions*10000)/100:null,
     ctrLink:impressions>0?Math.round(adsList.reduce((s,a)=>(s+(a.impressions>0&&a.ctrLink!=null?a.ctrLink*a.impressions/100:0)),0)/impressions*10000)/100:null,
     cpm:impressions>0?Math.round(cost/impressions*100000)/100:null,
-    budget:budget
+    budget:budget,
+    budgetType:budgetType
   };
 }
 
-function renderPivotMetricCells(data){
+function renderPivotMetricCells(data, rowType){
   let html='';
   PIVOT_COLS.forEach(c=>{
-    html+='<td>'+fmtCell(data[c[0]],c[2],c[0])+'</td>';
+    if(c[0]==='budget'){
+      const bt=data.budgetType||'';
+      if(rowType==='campaign' && bt==='CBO'){
+        html+='<td>'+fmtCell(data.budget,c[2],c[0])+'</td>';
+      } else if(rowType==='adset' && bt==='ABO'){
+        html+='<td>'+fmtCell(data.budget,c[2],c[0])+'</td>';
+      } else {
+        html+='<td><span class="nd">\u2014</span></td>';
+      }
+    } else {
+      html+='<td>'+fmtCell(data[c[0]],c[2],c[0])+'</td>';
+    }
   });
   return html;
 }
@@ -568,7 +580,7 @@ function renderPivotTable(){
     body+='<td class="col-adset-pv"><span style="color:#64748B">All</span></td>';
     body+='<td class="col-adname-pv"><span style="color:#64748B">All</span></td>';
     body+='<td class="col-ad"><span class="nd">\u2014</span></td>';
-    body+=renderPivotMetricCells(campDisplayTotals||camp.totals);
+    body+=renderPivotMetricCells(campDisplayTotals||camp.totals,'campaign');
     body+='</tr>';
 
     filteredAdsets.forEach(({as,ai,filteredAds})=>{
@@ -586,7 +598,7 @@ function renderPivotTable(){
       body+=escHtml(as.adset)+'</td>';
       body+='<td class="col-adname-pv"><span style="color:#64748B">All</span></td>';
       body+='<td class="col-ad"><span class="nd">\u2014</span></td>';
-      body+=renderPivotMetricCells(asDisplayTotals||as.totals);
+      body+=renderPivotMetricCells(asDisplayTotals||as.totals,'adset');
       body+='</tr>';
 
       // Ad rows
@@ -599,7 +611,7 @@ function renderPivotTable(){
         body+='<td class="col-adset-pv"></td>';
         body+='<td class="col-adname-pv" title="'+escHtml(ad.name)+'">'+escHtml(ad.name)+'</td>';
         body+='<td class="col-ad">'+linkHtml+'</td>';
-        body+=renderPivotMetricCells(ad);
+        body+=renderPivotMetricCells(ad,'ad');
         body+='</tr>';
       });
     });
