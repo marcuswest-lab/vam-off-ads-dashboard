@@ -518,11 +518,24 @@ function recomputeTotals(adsList){
   };
 }
 
-function renderPivotMetricCells(data){
+function renderPivotMetricCells(data, level){
+  // level: 'campaign', 'adset', or 'ad'
+  const bt=data.budgetType;
   let html='';
   PIVOT_COLS.forEach(c=>{
     const clsAttr=(c[2]==='delivery')?' class="col-delivery"':'';
-    html+='<td'+clsAttr+'>'+fmtCell(data[c[0]],c[2],c[0])+'</td>';
+    let val=data[c[0]];
+    // Budget: CBO shows at campaign level only, ABO shows at adset level only, never at ad level
+    if(c[0]==='budget'){
+      if(level==='ad') val=null;
+      else if(level==='campaign' && bt==='ABO') val=null;
+      else if(level==='adset' && bt==='CBO') val=null;
+    }
+    // Campaign delivery only on campaign row, adset delivery only on adset row, ad delivery only on ad row
+    if(c[0]==='campaignDelivery' && level!=='campaign') val=null;
+    if(c[0]==='adsetDelivery' && level!=='adset') val=null;
+    if(c[0]==='adDelivery' && level!=='ad') val=null;
+    html+='<td'+clsAttr+'>'+fmtCell(val,c[2],c[0])+'</td>';
   });
   return html;
 }
@@ -603,7 +616,7 @@ function renderPivotTable(){
     body+='<td class="col-adset-pv"><span style="color:#64748B">All</span></td>';
     body+='<td class="col-adname-pv"><span style="color:#64748B">All</span></td>';
     body+='<td class="col-ad"><span class="nd">\u2014</span></td>';
-    body+=renderPivotMetricCells(campDisplayTotals||camp.totals);
+    body+=renderPivotMetricCells(campDisplayTotals||camp.totals,'campaign');
     body+='</tr>';
 
     filteredAdsets.forEach(({as,ai,filteredAds})=>{
@@ -621,7 +634,7 @@ function renderPivotTable(){
       body+=escHtml(as.adset)+'</td>';
       body+='<td class="col-adname-pv"><span style="color:#64748B">All</span></td>';
       body+='<td class="col-ad"><span class="nd">\u2014</span></td>';
-      body+=renderPivotMetricCells(asDisplayTotals||as.totals);
+      body+=renderPivotMetricCells(asDisplayTotals||as.totals,'adset');
       body+='</tr>';
 
       // Ad rows
@@ -634,7 +647,7 @@ function renderPivotTable(){
         body+='<td class="col-adset-pv"></td>';
         body+='<td class="col-adname-pv" title="'+escHtml(ad.name)+'">'+escHtml(ad.name)+'</td>';
         body+='<td class="col-ad">'+linkHtml+'</td>';
-        body+=renderPivotMetricCells(ad);
+        body+=renderPivotMetricCells(ad,'ad');
         body+='</tr>';
       });
     });
